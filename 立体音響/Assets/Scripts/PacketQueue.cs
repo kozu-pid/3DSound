@@ -33,7 +33,7 @@ public class PacketQueue
 	private int					m_offset = 0;
 
 
-	private System.Object lockObj = new System.Object();
+	// private System.Object lockObj = new System.Object();
 	
 	//  コンストラクタ(ここで初期化を行います).
 	public PacketQueue()
@@ -50,17 +50,15 @@ public class PacketQueue
 		info.offset = m_offset;
 		info.size = size;
 			
-		lock (lockObj) {
-            Debug.Log("lock is called");
-			// パケット格納情報を保存します.
-			m_offsetList.Add(info);
-			// パケットデータを保存します.
-			m_streamBuffer.Position = m_offset;
-			m_streamBuffer.Write(data, 0, size);
-			m_streamBuffer.Flush();
-			m_offset += size;
-		}
-		
+        Debug.Log("lock is called");
+		// パケット格納情報を保存します.
+		m_offsetList.Add(info);
+		// パケットデータを保存します.
+		m_streamBuffer.Position = m_offset;
+		m_streamBuffer.Write(data, 0, size);
+		m_streamBuffer.Flush();
+		m_offset += size;
+				
 		return size;
 	}
 	
@@ -72,26 +70,24 @@ public class PacketQueue
 		}
 
 		int recvSize = 0;
-		lock (lockObj) {
-            Debug.Log("There is in lock");
-            PacketInfo info = m_offsetList[0];
-			// バッファから該当するパケットデータを取得します.
-			int dataSize = Math.Min(size, info.size);
-			m_streamBuffer.Position = info.offset;
-			recvSize = m_streamBuffer.Read(buffer, 0, dataSize);
+        Debug.Log("There is in lock");
+        PacketInfo info = m_offsetList[0];
+		// バッファから該当するパケットデータを取得します.
+		int dataSize = Math.Min(size, info.size);
+		m_streamBuffer.Position = info.offset;
+		recvSize = m_streamBuffer.Read(buffer, 0, dataSize);
 
-			// キューデータを取り出したので先頭要素を削除します.
-			if (recvSize > 0) {
-				m_offsetList.RemoveAt(0);
-			}
-
-			// すべてのキューデータを取り出したときはストリームをクリアしてメモリを節約します.
-			if (m_offsetList.Count == 0) {
-				Clear();
-				m_offset = 0;
-			}
+        // キューデータを取り出したので先頭要素を削除します.
+		if (recvSize > 0) {
+			m_offsetList.RemoveAt(0);
 		}
-		
+
+		// すべてのキューデータを取り出したときはストリームをクリアしてメモリを節約します.
+		if (m_offsetList.Count == 0) {
+			Clear();
+			m_offset = 0;
+		}
+				
 		return recvSize;
 	}
 
