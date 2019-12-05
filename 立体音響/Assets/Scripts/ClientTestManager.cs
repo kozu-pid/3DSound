@@ -22,28 +22,10 @@ public class ClientTestManager : MonoBehaviour
     private string ipAddressText;
     private int port;
     private int dataIndex;
-    private bool isConnected = false;
 
     private byte[] waveData;
 
     #endregion
-
-    // イベントハンドラー.
-    public void OnEventHandling(NetEventState state)
-    {
-        switch (state.type)
-        {
-            case NetEventType.Connect:
-                isConnected = true;
-                Debug.Log("[NetworkController] Connected.");
-                break;
-
-            case NetEventType.Disconnect:
-                isConnected = false;
-                Debug.Log("[NetworkController] Disconnected.");
-                break;
-        }
-    }
 
     // Start is called before the first frame update
     private void Start()
@@ -52,12 +34,8 @@ public class ClientTestManager : MonoBehaviour
         clientSocket = new TransportUDP();
         ipAddressText = DataManager.Instance.IpAddressText;
         port = DataManager.Instance.PortNum;
-        // connectionNumはUDPでは使用しない
         // 本番コード
-        clientSocket.StartServer(ipAddressText, port, 1);
-        // テストコード
-        // clientSocket.StartServer(port, -1);
-        clientSocket.RegisterEventHandler(OnEventHandling);
+        clientSocket.StartListening(ipAddressText, port);
         dataIndex = 0;
         // waveのデータを0.1sで保存する配列
         waveData = new byte[4410];
@@ -65,15 +43,18 @@ public class ClientTestManager : MonoBehaviour
 
     private void Update()
     {
-        if (Input.anyKeyDown)
+        if (Input.anyKey)
         {
-            clientSocket.Disconnect();
-            clientSocket.StopServer();
+            clientSocket.StopListening();
         }
     }
+
     private void FixedUpdate()
     {
-        recieveWaveBytes();
+        if (clientSocket.ThreadLoop)
+        {
+            recieveWaveBytes();
+        }
     }
 
     private void recieveWaveBytes()
@@ -83,14 +64,15 @@ public class ClientTestManager : MonoBehaviour
         int recvSize = clientSocket.Receive(ref buffer, buffer.Length);
         if (recvSize > 0)
         {
-            /*
-            for (int i = 0; i < recvSize; i++)
+            byte[] header = new byte[4];
+            // ヘッダの取得
+            for (int i = 0; i < header.Length; i++)
             {
-                Debug.Log("受信したデータ：" + System.Text.Encoding.ASCII.GetString(buffer) + "\n");
+                header[i] = buffer[i];
             }
-            */
-            Debug.Log("受信したデータ：" + System.Text.Encoding.ASCII.GetString(buffer) + "\n");
-            debugText.text = "受信したデータ：" + System.Text.Encoding.ASCII.GetString(buffer) + "\n";
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(header);
+            Debug.Log("header index : " + BitConverter.ToInt32(header, 0));
         }
     }
 

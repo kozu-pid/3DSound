@@ -13,7 +13,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
 using System.Runtime.InteropServices;
 
 public class PacketQueue
@@ -49,8 +48,6 @@ public class PacketQueue
 	
 		info.offset = m_offset;
 		info.size = size;
-			
-        Debug.Log("lock is called");
 		// パケット格納情報を保存します.
 		m_offsetList.Add(info);
 		// パケットデータを保存します.
@@ -58,19 +55,17 @@ public class PacketQueue
 		m_streamBuffer.Write(data, 0, size);
 		m_streamBuffer.Flush();
 		m_offset += size;
-				
+		
 		return size;
 	}
 	
 	// キューの取り出し.
 	public int Dequeue(ref byte[] buffer, int size) {
-
 		if (m_offsetList.Count <= 0) {
 			return -1;
 		}
 
 		int recvSize = 0;
-        Debug.Log("There is in lock");
         PacketInfo info = m_offsetList[0];
 		// バッファから該当するパケットデータを取得します.
 		int dataSize = Math.Min(size, info.size);
@@ -100,5 +95,6 @@ public class PacketQueue
 		m_streamBuffer.Position = 0;
 		m_streamBuffer.SetLength(0);
 	}
+
 }
 
