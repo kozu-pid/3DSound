@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using UniRx;
+using UniRx.Triggers;
 
 public class ClientTestManager : MonoBehaviour
 {
@@ -52,9 +54,18 @@ public class ClientTestManager : MonoBehaviour
 
         audioClips = new Queue<AudioClip>();
 
-        StartCoroutine(Checking(() => {
+        // If clientSocket.ThreadLoop is true, recieveWaveBytes is called
+        var recieveStream = this.UpdateAsObservable().Where(_ => clientSocket.ThreadLoop);
+        recieveStream.Subscribe(_ => {
+            recieveWaveBytes();
+        });
+
+        
+        var stopWaveStream = this.UpdateAsObservable().Where(_ => !speakerAudio.isPlaying);
+        stopWaveStream.Subscribe(_ =>
+        {
             playWaveFile();
-        }));
+        });
     }
 
     private void Update()
@@ -62,14 +73,6 @@ public class ClientTestManager : MonoBehaviour
         if (Input.anyKey)
         {
             clientSocket.StopListening();
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        if (clientSocket.ThreadLoop)
-        {
-            recieveWaveBytes();
         }
     }
 
@@ -161,7 +164,7 @@ public class ClientTestManager : MonoBehaviour
         {
             if (BitConverter.IsLittleEndian)
                 Array.Reverse(array, i * 4, 4);
-            floatArr[i] = BitConverter.ToSingle(array, i * 4) / 0x1000;
+            floatArr[i] = BitConverter.ToSingle(array, i * 4) / 0x80000000;
         }
         return floatArr;
     }
@@ -195,6 +198,7 @@ public class ClientTestManager : MonoBehaviour
 
         for (int i = dataIndex * waveDataBytesParPacketLength; i < dstIndex * waveDataBytesParPacketLength; i++)
         {
+            // TODO: IndexOutOfRangeException
             waveData[i] = 0;
         }
     }
@@ -209,27 +213,14 @@ public class ClientTestManager : MonoBehaviour
         audioClips.Enqueue(audioClip);
     }
 
-    public delegate void functionType();
-    private IEnumerator Checking(functionType callback)
-    {
-        while (true)
-        {
-            yield return new WaitForFixedUpdate();
-            if (!speakerAudio.isPlaying)
-            {
-                callback();
-                break;
-            }
-        }
-    }
-
     private void playWaveFile()
     {
-        if (audioClips.Count == 0)
+        if (audioClips.Count <= 0)
         {
             return;
         }
         speakerAudio.clip = audioClips.Dequeue();
+        Debug.Log("Dequeue is called");
         speakerAudio.Play();
     }
 }
