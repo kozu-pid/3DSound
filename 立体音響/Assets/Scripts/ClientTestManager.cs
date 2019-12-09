@@ -16,6 +16,8 @@ public class ClientTestManager : MonoBehaviour
     [SerializeField] private int mtu = 445;
     [SerializeField] private Text debugText;
 
+    [SerializeField] private AudioClip InputWave;
+
     #endregion SerializeField Define
 
     #region private Define

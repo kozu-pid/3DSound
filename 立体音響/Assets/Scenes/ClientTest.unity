@@ -570,6 +570,7 @@ MonoBehaviour:
   speakerAudio: {fileID: 1843129451}
   mtu: 445
   debugText: {fileID: 367646171}
+  InputWave: {fileID: 8300000, guid: b3b3b69992ce54749a805b19e1d903f9, type: 3}
 --- !u!1 &925235984
 GameObject:
   m_ObjectHideFlags: 0
