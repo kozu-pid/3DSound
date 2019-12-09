@@ -47,7 +47,7 @@ public class ClientTestManager : MonoBehaviour
         clientSocket.StartListening(ipAddressText, port);
         dataIndex = 0;
         waveDataBytesParPacketLength = mtu - 4;
-        waveDataPacketParFile = 10;
+        waveDataPacketParFile = 100;
         // waveのデータを0.1sで保存する配列
         // waveファイルに書き出す配列
         waveData = new byte[waveDataBytesParPacketLength * waveDataPacketParFile];
@@ -103,7 +103,7 @@ public class ClientTestManager : MonoBehaviour
             setWaveData(buffer, nowIndex);
             dataIndex++;
             // 期待するindexが10の倍数であればwaveに格納する
-            if ((dataIndex % 10) == 0)
+            if ((dataIndex % waveDataPacketParFile) == 0)
             {
                 setAudioClip(createAudioClip(waveData));
             }
@@ -134,7 +134,7 @@ public class ClientTestManager : MonoBehaviour
             setZero(nowIndex);
             dataIndex = nowIndex + 1;
             // 期待するindexが10の倍数であればwaveに格納する
-            if ((dataIndex % 10) == 0)
+            if ((dataIndex % waveDataPacketParFile) == 0)
             {
                 setAudioClip(createAudioClip(waveData));
             }
@@ -162,8 +162,10 @@ public class ClientTestManager : MonoBehaviour
         float[] floatArr = new float[array.Length / 4];
         for (int i = 0; i < floatArr.Length; i++)
         {
+            /*
             if (BitConverter.IsLittleEndian)
                 Array.Reverse(array, i * 4, 4);
+            */
             floatArr[i] = BitConverter.ToSingle(array, i * 4) / 0x80000000;
         }
         return floatArr;
