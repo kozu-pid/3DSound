@@ -21,9 +21,16 @@ public class ClientTestManager : MonoBehaviour
     private TransportUDP clientSocket;
     private string ipAddressText;
     private int port;
+    // 送られてきたデータのindexと比較するためのindex
     private int dataIndex;
+    // 一つのパケットに含まれるwaveデータの長さ
+    private int waveDataBytesParPacketLength;
+    // 一つのwaveファイルに含まれるwaveデータのパケット数
+    private int waveDataPacketParFile;
 
     private byte[] waveData;
+
+    private Queue<AudioClip> audioClips;
 
     #endregion
 
@@ -37,8 +44,17 @@ public class ClientTestManager : MonoBehaviour
         // 本番コード
         clientSocket.StartListening(ipAddressText, port);
         dataIndex = 0;
+        waveDataBytesParPacketLength = mtu - 4;
+        waveDataPacketParFile = 10;
         // waveのデータを0.1sで保存する配列
-        waveData = new byte[4410];
+        // waveファイルに書き出す配列
+        waveData = new byte[waveDataBytesParPacketLength * waveDataPacketParFile];
+
+        audioClips = new Queue<AudioClip>();
+
+        StartCoroutine(Checking(() => {
+            playWaveFile();
+        }));
     }
 
     private void Update()
@@ -62,18 +78,80 @@ public class ClientTestManager : MonoBehaviour
         byte[] buffer = new byte[mtu];
 
         int recvSize = clientSocket.Receive(ref buffer, buffer.Length);
-        if (recvSize > 0)
+        if (recvSize <= 0)
         {
-            byte[] header = new byte[4];
-            // ヘッダの取得
-            for (int i = 0; i < header.Length; i++)
-            {
-                header[i] = buffer[i];
-            }
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(header);
-            Debug.Log("header index : " + BitConverter.ToInt32(header, 0));
+            return;
         }
+        byte[] header = new byte[4];
+        // ヘッダの取得
+        for (int i = 0; i < header.Length; i++)
+        {
+            header[i] = buffer[i];
+        }
+        if (BitConverter.IsLittleEndian)
+        {
+            Array.Reverse(header);
+        }
+        int nowIndex = BitConverter.ToInt32(header, 0);
+
+        // 期待するindexが来たとき
+        if (nowIndex == dataIndex)
+        {
+            setWaveData(buffer, nowIndex);
+            dataIndex++;
+            // 期待するindexが10の倍数であればwaveに格納する
+            if ((dataIndex % 10) == 0)
+            {
+                setAudioClip(createAudioClip(waveData));
+            }
+        }
+        #region 期待するindexより小さい値が来たとき
+
+        // waveに書き出す前であれば格納する
+        else if (nowIndex < dataIndex && judgeSameCircle(nowIndex))
+        {
+            setWaveData(buffer, nowIndex);
+        }
+        // 書き出したあとのため破棄
+        else if (nowIndex < dataIndex)
+        {
+            // 破棄すべきデータ
+            return;
+        }
+
+        #endregion
+
+        #region 期待するindexより大きい値が来た時
+
+        // waveに書き出す前であれば格納し，空き箇所に0を埋める
+        else if (nowIndex > dataIndex && judgeSameCircle(nowIndex))
+        {
+            setWaveData(buffer, nowIndex);
+            // 空き箇所に０詰める
+            setZero(nowIndex);
+            dataIndex = nowIndex + 1;
+            // 期待するindexが10の倍数であればwaveに格納する
+            if ((dataIndex % 10) == 0)
+            {
+                setAudioClip(createAudioClip(waveData));
+            }
+        }
+
+        // waveに書き出してから格納したい
+        else if (nowIndex > dataIndex)
+        {
+            // 損失箇所を0埋めする
+            setZero(nowIndex);
+            // waveに書き出す
+            setAudioClip(createAudioClip(waveData));
+            // 格納する
+            setWaveData(buffer, nowIndex);
+
+            dataIndex = nowIndex + 1;
+        }
+
+        #endregion
+
     }
 
     private float[] ConvertByteToFloat(byte[] array)
@@ -96,4 +174,62 @@ public class ClientTestManager : MonoBehaviour
         return audioClip;
     }
 
+    private void setWaveData(byte[] buffer, int nowIndex)
+    {
+        int CopyDestinationIndex = waveDataBytesParPacketLength * (nowIndex % waveDataPacketParFile);
+        Array.Copy(buffer, 4, waveData, CopyDestinationIndex, waveDataBytesParPacketLength);
+    }
+
+    private void setZero(int nowIndex)
+    {
+        // nowIndexがdataIndex以下のとき処理を行わない
+        if (nowIndex <= dataIndex)
+        {
+            return;
+        }
+        int dstIndex = nowIndex;
+        if (judgeSameCircle(dstIndex))
+        {
+            dstIndex = 10;
+        }
+
+        for (int i = dataIndex * waveDataBytesParPacketLength; i < dstIndex * waveDataBytesParPacketLength; i++)
+        {
+            waveData[i] = 0;
+        }
+    }
+
+    private bool judgeSameCircle(int nowIndex)
+    {
+        return (nowIndex / waveDataPacketParFile) == (dataIndex / waveDataPacketParFile);
+    }
+
+    private void setAudioClip(AudioClip audioClip)
+    {
+        audioClips.Enqueue(audioClip);
+    }
+
+    public delegate void functionType();
+    private IEnumerator Checking(functionType callback)
+    {
+        while (true)
+        {
+            yield return new WaitForFixedUpdate();
+            if (!speakerAudio.isPlaying)
+            {
+                callback();
+                break;
+            }
+        }
+    }
+
+    private void playWaveFile()
+    {
+        if (audioClips.Count == 0)
+        {
+            return;
+        }
+        speakerAudio.clip = audioClips.Dequeue();
+        speakerAudio.Play();
+    }
 }
