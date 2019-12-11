@@ -35,11 +35,6 @@ public class TransportUDP
 
 class TransmitThread extends Thread
 {
-  	private short sequenceNum;     // シーケンス番号
-	private int timeStamp;         // タイムスタンプ
-	private int syncSourceId;      // 同期ソースID
-  	private byte marker;           // マーカービット
-	
  	private String destIP;
   	private String destPort;
 	private String filename;
