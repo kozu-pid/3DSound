@@ -57,16 +57,12 @@ namespace WWUtils.Audio
 
             // Keep iterating until we find the data chunk (i.e. 64 61 74 61 ...... (i.e. 100 97 116 97 in decimal))
             // "data"
-            Debug.Log("pos = 38 : " + wav[38]);
-            Debug.Log("pos = 39 : " + wav[39]);
-            Debug.Log("pos = 40 : " + wav[40]);
-            Debug.Log("pos = 41 : " + wav[41]);
 
             while (!(wav[pos] == 100 && wav[pos + 1] == 97 && wav[pos + 2] == 116 && wav[pos + 3] == 97))
             {
                 pos += 4;
-                int chunkSize = wav[pos] + wav[pos + 1] * 256 + wav[pos + 2] * 65536 + wav[pos + 3] * 16777216;
-                pos += 4 + chunkSize;
+                int fmtSize = wav[pos] + wav[pos + 1] * 256 + wav[pos + 2] * 65536 + wav[pos + 3] * 16777216;
+                pos += 4 + fmtSize;
             }
             pos += 8;
 

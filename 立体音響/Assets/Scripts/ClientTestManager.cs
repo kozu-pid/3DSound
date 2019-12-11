@@ -14,7 +14,7 @@ public class ClientTestManager : MonoBehaviour
     // TODO : Array
     [SerializeField] private AudioSource speakerAudio;
     // mtuの仮置き，10ms分のデータ（441byte）とヘッダ（4byte）
-    [SerializeField] private int mtu = 1769;
+    [SerializeField] private int mtu = 445;
     [SerializeField] private Text debugText;
 
     #endregion SerializeField Define
@@ -48,7 +48,7 @@ public class ClientTestManager : MonoBehaviour
         clientSocket.StartListening(ipAddressText, port);
         dataIndex = 0;
         waveDataBytesParPacketLength = mtu - 4;
-        waveDataPacketParFile = 10;
+        waveDataPacketParFile = 1000;
         // waveのデータを0.1sで保存する配列
         // waveファイルに書き出す配列
         waveData = new byte[waveDataBytesParPacketLength * waveDataPacketParFile + 46];
@@ -252,7 +252,6 @@ public class ClientTestManager : MonoBehaviour
         // int -> byte[4]
         byte[] chunk_size = BitConverter.GetBytes(size - 8);
         Debug.Log("chunk_size : " + BitConverter.ToString(chunk_size));
-        Array.Reverse(chunk_size);
         Array.Copy(chunk_size, 0, waveBytes, 4, chunk_size.Length);
         chunk_size = null;
 
@@ -270,7 +269,6 @@ public class ClientTestManager : MonoBehaviour
         // 今回のWAVファイルは18であったが，16にしてみる
         byte[] fmt_size = BitConverter.GetBytes(18);
         Debug.Log("fmt_size : " + BitConverter.ToString(fmt_size));
-        Array.Reverse(fmt_size);
         Array.Copy(fmt_size, 0, waveBytes, 16, fmt_size.Length);
         fmt_size = null;
 
@@ -288,14 +286,12 @@ public class ClientTestManager : MonoBehaviour
         // 44100Hz
         byte[] sampleFreq = BitConverter.GetBytes(44100);
         Debug.Log("sampleFreq : " + BitConverter.ToString(sampleFreq));
-        Array.Reverse(sampleFreq);
         Array.Copy(sampleFreq, 0, waveBytes, 24, sampleFreq.Length);
         sampleFreq = null;
 
         // 1秒あたりバイト数の平均 : 4bytes
         byte[] aveParSec = BitConverter.GetBytes(44100 * 4);
         Debug.Log("aveParSec : " + BitConverter.ToString(aveParSec));
-        Array.Reverse(aveParSec);
         Array.Copy(aveParSec, 0, waveBytes, 28, aveParSec.Length);
         aveParSec = null;
 
@@ -320,7 +316,6 @@ public class ClientTestManager : MonoBehaviour
         // ここが分からないため先生の助言どうり-46で試してみる
         byte[] waveDataBytes = BitConverter.GetBytes(size - 46);
         Debug.Log("waveDataBytes : " + BitConverter.ToString(waveDataBytes));
-        Array.Reverse(waveDataBytes);
         Array.Copy(waveDataBytes, 0, waveBytes, 42, waveDataBytes.Length);
         waveDataBytes = null;
 
