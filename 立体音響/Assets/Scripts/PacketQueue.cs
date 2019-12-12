@@ -16,7 +16,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 
 public class PacketQueue
-{	
+{
 	// パケット格納情報.
 	struct PacketInfo
 	{
@@ -31,11 +31,15 @@ public class PacketQueue
 	
 	private int					m_offset = 0;
 
+    public int Length
+    {
+        get { return m_offsetList.Count; }
+    }
 
-	// private System.Object lockObj = new System.Object();
-	
-	//  コンストラクタ(ここで初期化を行います).
-	public PacketQueue()
+    // private System.Object lockObj = new System.Object();
+
+    //  コンストラクタ(ここで初期化を行います).
+    public PacketQueue()
 	{
 		m_streamBuffer = new MemoryStream();
 		m_offsetList = new List<PacketInfo>();

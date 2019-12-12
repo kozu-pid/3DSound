@@ -44,6 +44,7 @@ public class TransportUDP : MonoBehaviour {
     public TransportUDP()
     {
         m_recvQueue = new PacketQueue();
+        m_recvQueue.Clear();
     }
 	
 
@@ -123,7 +124,7 @@ public class TransportUDP : MonoBehaviour {
     public int Receive(ref byte[] buffer, int size)
 	{
         Debug.Log("Receive is called");
-		if (m_recvQueue == null) {
+		if (m_recvQueue.Length <= 0) {
             Debug.Log("Receice queue is null");
 			return 0;
 		}
@@ -207,17 +208,14 @@ public class TransportUDP : MonoBehaviour {
 				byte[] buffer = new byte[s_mtu];
 
                 int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
-                Debug.Log("データサイズ：" + recvSize + " byte 受け取りました");
                 // 通信相手と切断したことにReceive関数の関数値は0が返されます.
                 if (recvSize == 0) {
                     // 切断.
                     Debug.Log("Disconnect recv from client.");
                 }
                 else if (recvSize > 0) {
-                    Debug.Log("Enqueue is calling");
                     // ゲームスレッド側に受信したデータを渡すために受信データをキューに追加します.
                     m_recvQueue.Enqueue(buffer, recvSize);
-                    Debug.Log("Enqueue is called");
                 }
             }
         }

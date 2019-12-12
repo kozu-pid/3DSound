@@ -15,7 +15,6 @@ public class ClientTestManager : MonoBehaviour
     [SerializeField] private AudioSource speakerAudio;
     // mtuの仮置き，10ms分のデータ（441byte）とヘッダ（4byte）
     [SerializeField] private int mtu = 445;
-    [SerializeField] private Text debugText;
 
     #endregion SerializeField Define
 
@@ -62,8 +61,7 @@ public class ClientTestManager : MonoBehaviour
             recieveWaveBytes();
         });
 
-        
-        var stopWaveStream = this.UpdateAsObservable().Where(_ => !speakerAudio.isPlaying);
+        var stopWaveStream = this.UpdateAsObservable().Where(_ => (!speakerAudio.isPlaying || speakerAudio.clip == null));
         stopWaveStream.Subscribe(_ =>
         {
             playWaveFile();
@@ -75,6 +73,11 @@ public class ClientTestManager : MonoBehaviour
         if (Input.anyKey)
         {
             clientSocket.StopListening();
+        }
+
+        if (!speakerAudio.isPlaying)
+        {
+            playWaveFile();
         }
     }
 
@@ -159,18 +162,6 @@ public class ClientTestManager : MonoBehaviour
 
     }
 
-    private float[] ConvertByteToFloat(byte[] array)
-    {
-        float[] floatArr = new float[array.Length / 4];
-        for (int i = 0; i < floatArr.Length; i++)
-        {
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(array, i * 4, 4);
-            floatArr[i] = BitConverter.ToInt16(array, i * 4) / 0x8000;
-        }
-        return floatArr;
-    }
-
     private AudioClip createAudioClip(byte[] array)
     {
         /*
@@ -219,6 +210,7 @@ public class ClientTestManager : MonoBehaviour
     private void setAudioClip(AudioClip audioClip)
     {
         audioClips.Enqueue(audioClip);
+        Debug.Log("Enqueue is called");
     }
 
     private void playWaveFile()
