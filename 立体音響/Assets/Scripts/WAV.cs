@@ -50,7 +50,6 @@ namespace WWUtils.Audio
 
             // Get the frequency
             Frequency = bytesToInt(wav, 24);
-            Debug.Log("Frequency : " + Frequency);
 
             // Get past all the other sub chunks to get to the data subchunk:
             int pos = 12;   // First Subchunk ID from 12 to 16

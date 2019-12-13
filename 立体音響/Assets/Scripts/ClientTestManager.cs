@@ -13,8 +13,6 @@ public class ClientTestManager : MonoBehaviour
 
     // TODO : Array
     [SerializeField] private AudioSource speakerAudio;
-    // mtuの仮置き，10ms分のデータ（441byte）とヘッダ（4byte）
-    [SerializeField] private int mtu = 445;
 
     #endregion SerializeField Define
 
@@ -23,8 +21,6 @@ public class ClientTestManager : MonoBehaviour
     private TransportUDP clientSocket;
     private string ipAddressText;
     private int port;
-    // 送られてきたデータのindexと比較するためのindex
-    private int dataIndex;
     // 一つのパケットに含まれるwaveデータの長さ
     private int waveDataBytesParPacketLength;
     // 一つのwaveファイルに含まれるwaveデータのパケット数
@@ -45,12 +41,13 @@ public class ClientTestManager : MonoBehaviour
         port = DataManager.Instance.PortNum;
         // 本番コード
         clientSocket.StartListening(ipAddressText, port);
-        dataIndex = 0;
-        waveDataBytesParPacketLength = mtu - 4;
+        waveDataBytesParPacketLength = 441;
+        clientSocket.DataPacketsParFile = waveDataPacketParFile;
         waveDataPacketParFile = 1000;
+        clientSocket.BytesParPacket = waveDataBytesParPacketLength;
         // waveのデータを0.1sで保存する配列
         // waveファイルに書き出す配列
-        waveData = new byte[waveDataBytesParPacketLength * waveDataPacketParFile + 46];
+        waveData = new byte[waveDataBytesParPacketLength * waveDataPacketParFile + 44];
         setWaveHeader(waveData);
 
         audioClips = new Queue<AudioClip>();
@@ -60,7 +57,7 @@ public class ClientTestManager : MonoBehaviour
         recieveStream.Subscribe(_ => {
             recieveWaveBytes();
         });
-
+        
         var stopWaveStream = this.UpdateAsObservable().Where(_ => (!speakerAudio.isPlaying || speakerAudio.clip == null));
         stopWaveStream.Subscribe(_ =>
         {
@@ -74,137 +71,29 @@ public class ClientTestManager : MonoBehaviour
         {
             clientSocket.StopListening();
         }
-
-        if (!speakerAudio.isPlaying)
-        {
-            playWaveFile();
-        }
     }
 
     private void recieveWaveBytes()
     {
-        byte[] buffer = new byte[mtu];
-
+        byte[] buffer = new byte[waveDataBytesParPacketLength * waveDataPacketParFile];
         int recvSize = clientSocket.Receive(ref buffer, buffer.Length);
         if (recvSize <= 0)
         {
+            buffer = null;
             return;
         }
-        byte[] header = new byte[4];
-        // ヘッダの取得
-        for (int i = 0; i < header.Length; i++)
-        {
-            header[i] = buffer[i];
-        }
-        if (BitConverter.IsLittleEndian)
-        {
-            Array.Reverse(header);
-        }
-        int nowIndex = BitConverter.ToInt32(header, 0);
-
-        // 期待するindexが来たとき
-        if (nowIndex == dataIndex)
-        {
-            setWaveData(buffer, nowIndex);
-            dataIndex++;
-            // 期待するindexが10の倍数であればwaveに格納する
-            if ((dataIndex % waveDataPacketParFile) == 0)
-            {
-                setAudioClip(createAudioClip(waveData));
-            }
-        }
-        #region 期待するindexより小さい値が来たとき
-
-        // waveに書き出す前であれば格納する
-        else if (nowIndex < dataIndex && judgeSameCircle(nowIndex))
-        {
-            setWaveData(buffer, nowIndex);
-        }
-        // 書き出したあとのため破棄
-        else if (nowIndex < dataIndex)
-        {
-            // 破棄すべきデータ
-            return;
-        }
-
-        #endregion
-
-        #region 期待するindexより大きい値が来た時
-
-        // waveに書き出す前であれば格納し，空き箇所に0を埋める
-        else if (nowIndex > dataIndex && judgeSameCircle(nowIndex))
-        {
-            setWaveData(buffer, nowIndex);
-            // 空き箇所に０詰める
-            setZero(nowIndex);
-            dataIndex = nowIndex + 1;
-            // 期待するindexが10の倍数であればwaveに格納する
-            if ((dataIndex % waveDataPacketParFile) == 0)
-            {
-                setAudioClip(createAudioClip(waveData));
-            }
-        }
-
-        // waveに書き出してから格納したい
-        else if (nowIndex > dataIndex)
-        {
-            // 損失箇所を0埋めする
-            setZero(nowIndex);
-            // waveに書き出す
-            setAudioClip(createAudioClip(waveData));
-            // 格納する
-            setWaveData(buffer, nowIndex);
-
-            dataIndex = nowIndex + 1;
-        }
-
-        #endregion
-
+        Array.Copy(buffer, 0, waveData, 44, buffer.Length);
+        // Debug.Log("WAVE : " + BitConverter.ToString(waveData));
+        setAudioClip(createAudioClip(waveData));
     }
 
     private AudioClip createAudioClip(byte[] array)
     {
-        /*
-        AudioClipMaker acm = new AudioClipMaker();
-        return acm.Create("testSound", array, 44, 16, array.Length / 4, 2, 44100, false);
-        */
-
         WAV wav = new WAV(array);
         Debug.Log(wav);
         AudioClip audioClip = AudioClip.Create("testSound", wav.SampleCount, 1, wav.Frequency, false);
         audioClip.SetData(wav.LeftChannel, 0);
         return audioClip;
-    }
-
-    private void setWaveData(byte[] buffer, int nowIndex)
-    {
-        int CopyDestinationIndex = waveDataBytesParPacketLength * (nowIndex % waveDataPacketParFile) + 46;
-        Array.Copy(buffer, 4, waveData, CopyDestinationIndex, waveDataBytesParPacketLength);
-    }
-
-    private void setZero(int nowIndex)
-    {
-        // nowIndexがdataIndex以下のとき処理を行わない
-        if (nowIndex <= dataIndex)
-        {
-            return;
-        }
-        int dstIndex = nowIndex;
-        if (judgeSameCircle(dstIndex))
-        {
-            dstIndex = 10;
-        }
-
-        for (int i = dataIndex * waveDataBytesParPacketLength; i < dstIndex * waveDataBytesParPacketLength; i++)
-        {
-            // TODO: IndexOutOfRangeException
-            waveData[i] = 0;
-        }
-    }
-
-    private bool judgeSameCircle(int nowIndex)
-    {
-        return (nowIndex / waveDataPacketParFile) == (dataIndex / waveDataPacketParFile);
     }
 
     private void setAudioClip(AudioClip audioClip)
@@ -223,8 +112,6 @@ public class ClientTestManager : MonoBehaviour
         Debug.Log("Dequeue is called");
         speakerAudio.Play();
     }
-
-    #region About header
 
     private int setWaveHeader(byte[] waveBytes)
     {
@@ -259,7 +146,7 @@ public class ClientTestManager : MonoBehaviour
 
         // fmtチャンクのバイト数　リニアPCMなら16 : 4bytes
         // 今回のWAVファイルは18であったが，16にしてみる
-        byte[] fmt_size = BitConverter.GetBytes(18);
+        byte[] fmt_size = BitConverter.GetBytes(16);
         Debug.Log("fmt_size : " + BitConverter.ToString(fmt_size));
         Array.Copy(fmt_size, 0, waveBytes, 16, fmt_size.Length);
         fmt_size = null;
@@ -295,24 +182,24 @@ public class ClientTestManager : MonoBehaviour
         waveBytes[34] = (byte)10;
         waveBytes[35] = (byte)0;
 
+        /*
         // 拡張パラメータののサイズ
         waveBytes[36] = (byte)0;
         waveBytes[37] = (byte)0;
+        */
 
         // "data" : 4bytes
         byte[] data_ASCII = System.Text.Encoding.ASCII.GetBytes("data");
         Debug.Log("data bytes : " + BitConverter.ToString(data_ASCII));
-        Array.Copy(data_ASCII, 0, waveBytes, 38, data_ASCII.Length);
+        Array.Copy(data_ASCII, 0, waveBytes, 36, data_ASCII.Length);
 
         // 波形データのバイト数 : 4bytes
         // ここが分からないため先生の助言どうり-46で試してみる
         byte[] waveDataBytes = BitConverter.GetBytes(size - 46);
         Debug.Log("waveDataBytes : " + BitConverter.ToString(waveDataBytes));
-        Array.Copy(waveDataBytes, 0, waveBytes, 42, waveDataBytes.Length);
+        Array.Copy(waveDataBytes, 0, waveBytes, 40, waveDataBytes.Length);
         waveDataBytes = null;
 
-        return 46;
+        return 44;
     }
-
-    #endregion
 }

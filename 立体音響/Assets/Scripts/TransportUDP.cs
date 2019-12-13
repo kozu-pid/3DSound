@@ -2,6 +2,7 @@
 
 using UnityEngine;
 using System.Collections;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -41,15 +42,41 @@ public class TransportUDP : MonoBehaviour {
 	// 動作させる環境のMTUを調べて設定しましょう.
 	private static int 		s_mtu = 1400;
 
+    private int dataIndex;
+    private int recvIndex;
+    private int dataPacketsParFile;
+    public int DataPacketsParFile
+    {
+        set { dataPacketsParFile = value; }
+        get { return dataPacketsParFile; }
+    }
+    private int bytesParPacket;
+    public int BytesParPacket
+    {
+        set { bytesParPacket = value; }
+        get { return bytesParPacket; }
+    }
+
     public TransportUDP()
     {
         m_recvQueue = new PacketQueue();
         m_recvQueue.Clear();
+        dataIndex = 0;
+        recvIndex = 0;
     }
-	
 
-	// 待ち受け開始.
-	public bool StartListening(int port)
+    public TransportUDP(int dataPacketsParFile, int bytesParPacket)
+    {
+        m_recvQueue = new PacketQueue();
+        dataIndex = 0;
+        recvIndex = 0;
+        this.dataPacketsParFile = dataPacketsParFile;
+        this.bytesParPacket = bytesParPacket;
+    }
+
+
+    // 待ち受け開始.
+    public bool StartListening(int port)
 	{
         Debug.Log("StartListening called.!");
 
@@ -105,34 +132,16 @@ public class TransportUDP : MonoBehaviour {
         Debug.Log("Listening stopped.");
     }
 
-    /*
-    // 送信処理.
-    public int Send(byte[] data, int size)
-	{
-		if (m_sendQueue == null) {
-			return 0;
-		}
-
-		// 送信データは一旦キューにバッファリングするだけで送信はしていません.
-		// 実際の送信は通信スレッド側(DispatchSend() 関数)で行います.
-		// ゲームスレッド側の処理をできるだけ軽くするために直接 Send() 関数で送信していません.
-		return m_sendQueue.Enqueue(data, size);
-    }
-    */
-
     // 受信処理.
     public int Receive(ref byte[] buffer, int size)
 	{
-        Debug.Log("Receive is called");
-		if (m_recvQueue.Length <= 0) {
-            Debug.Log("Receice queue is null");
+		if (m_recvQueue.Length <= dataPacketsParFile) {
+            Debug.Log("Receive is not yet");
 			return 0;
 		}
-        Debug.Log("Recive queue is not null");
-        // 実際の受信は通信スレッド側(DispatchReceive() 関数)で行います.
-        // ゲームスレッド側の処理をできるだけ軽くするために直接　Receive() 関数で受信していません.
-        
-		return m_recvQueue.Dequeue(ref buffer, size);
+        Debug.Log("Receive is ready");
+        // Dequeue
+		return m_recvQueue.Dequeue(ref buffer, size, dataPacketsParFile);
     }
 
 	// スレッド起動関数.
@@ -161,10 +170,6 @@ public class TransportUDP : MonoBehaviour {
             // AcceptClient();
 			// クライアントとの送受信を処理します.
 			if (m_socket != null) {
-
-	            // 送信処理.
-	            // DispatchSend();
-
 	            // 受信処理.
 	            DispatchReceive();
 	        }
@@ -175,30 +180,6 @@ public class TransportUDP : MonoBehaviour {
 		Debug.Log("Dispatch thread ended.");
     }
 
-    /*
-	// スレッド側の送信処理.
-    void DispatchSend()
-	{
-        try {
-            // 送信処理.
-            if (m_socket.Poll(0, SelectMode.SelectWrite)) {
-				byte[] buffer = new byte[s_mtu];
-
-				// Send関数でバッファリングされたデータを取り出して送信を行います.
-                int sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
-                // 送信データがなくなるまで送信を続けます.
-                while (sendSize > 0) {
-                    m_socket.Send(buffer, sendSize, SocketFlags.None);
-                    sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
-                }
-            }
-        }
-        catch {
-            return;
-        }
-    }
-    */
-
 	// スレッド側の受信処理.
     void DispatchReceive()
 	{
@@ -206,7 +187,6 @@ public class TransportUDP : MonoBehaviour {
         try {
             while (m_socket.Poll(0, SelectMode.SelectRead)) {
 				byte[] buffer = new byte[s_mtu];
-
                 int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
                 // 通信相手と切断したことにReceive関数の関数値は0が返されます.
                 if (recvSize == 0) {
@@ -215,12 +195,60 @@ public class TransportUDP : MonoBehaviour {
                 }
                 else if (recvSize > 0) {
                     // ゲームスレッド側に受信したデータを渡すために受信データをキューに追加します.
-                    m_recvQueue.Enqueue(buffer, recvSize);
+                    // インデックスの切り離し
+                    recvIndex = getRecvIndex(buffer);
+                    // waveData is OK
+                    // Debug.Log("dataIndex : " + dataIndex + ", recvIndex : " + recvIndex);
+                    if (dataIndex <= recvIndex)
+                    {
+                        // 0埋め行う
+                        setZero(dataIndex, recvSize, bytesParPacket);
+                        m_recvQueue.Enqueue(buffer, 4, buffer.Length - 4, recvIndex);
+                        Debug.Log("Enqueue is called");
+                        dataIndex = recvIndex + 1;
+                    }
+                    // Dequeueされたあとに格納したくない
+                    else if (m_recvQueue.LeadIndex > recvIndex)
+                    {
+                        m_recvQueue.Insertqueue(buffer, 4, buffer.Length - 4, recvIndex);
+                    }
                 }
             }
         }
         catch {
             return;
+        }
+    }
+
+    private int getRecvIndex(byte[] buffer)
+    {
+        byte[] header = new byte[4];
+        // ヘッダの取得
+        for (int i = 0; i < header.Length; i++)
+        {
+            header[i] = buffer[i];
+        }
+        if (BitConverter.IsLittleEndian)
+        {
+            Array.Reverse(header);
+        }
+        return BitConverter.ToInt32(header, 0);
+    }
+
+    private void setZero(int srcIndex, int dstIndex, int unitLength)
+    {
+        if (srcIndex >= dstIndex)
+        {
+            return;
+        }
+        byte[] zeros = new byte[unitLength];
+        for (int i = 0; i < zeros.Length; i++)
+        {
+            zeros[i] = (byte)0;
+        }
+        for (int i = srcIndex; i < dstIndex; i++)
+        {
+            m_recvQueue.Enqueue(zeros, 0, zeros.Length, i);
         }
     }
 }

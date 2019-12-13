@@ -13,6 +13,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
 using System.Runtime.InteropServices;
 
 public class PacketQueue
@@ -22,6 +23,7 @@ public class PacketQueue
 	{
 		public int	offset;
 		public int 	size;
+        public int index;
 	};
 	
 	//
@@ -31,6 +33,11 @@ public class PacketQueue
 	
 	private int					m_offset = 0;
 
+    private int leadIndex;
+    public int LeadIndex
+    {
+        get { return leadIndex; }
+    }
     public int Length
     {
         get { return m_offsetList.Count; }
@@ -43,25 +50,36 @@ public class PacketQueue
 	{
 		m_streamBuffer = new MemoryStream();
 		m_offsetList = new List<PacketInfo>();
+        leadIndex = 0;
 	}
 	
 	// キューを追加.
-	public int Enqueue(byte[] data, int size)
+	public int Enqueue(byte[] data, int srcOffset, int size, int index)
 	{
 		PacketInfo	info = new PacketInfo();
-	
-		info.offset = m_offset;
+	    info.offset = m_offset;
 		info.size = size;
+        info.index = index;
 		// パケット格納情報を保存します.
 		m_offsetList.Add(info);
 		// パケットデータを保存します.
 		m_streamBuffer.Position = m_offset;
-		m_streamBuffer.Write(data, 0, size);
-		m_streamBuffer.Flush();
+        m_streamBuffer.Write(data, srcOffset, size);
+        m_streamBuffer.Flush();
 		m_offset += size;
 		
 		return size;
 	}
+
+    // キューを指定箇所に追加
+    public int Insertqueue(byte[] data, int srcOffset, int size, int index)
+    {
+        // infoはすでにあるため格納しない
+        m_streamBuffer.Position = index * size;
+        m_streamBuffer.Write(data, srcOffset, size);
+        m_streamBuffer.Flush();
+        return size;
+    }
 	
 	// キューの取り出し.
 	public int Dequeue(ref byte[] buffer, int size) {
@@ -75,7 +93,6 @@ public class PacketQueue
 		int dataSize = Math.Min(size, info.size);
 		m_streamBuffer.Position = info.offset;
 		recvSize = m_streamBuffer.Read(buffer, 0, dataSize);
-
         // キューデータを取り出したので先頭要素を削除します.
 		if (recvSize > 0) {
 			m_offsetList.RemoveAt(0);
@@ -90,8 +107,41 @@ public class PacketQueue
 		return recvSize;
 	}
 
-	// キューをクリア.	
-	public void Clear()
+    // 複数キューの取り出し.
+    public int Dequeue(ref byte[] buffer, int size, int dataPacketsParFile)
+    {
+        if (m_offsetList.Count <= dataPacketsParFile)
+        {
+            return -1;
+        }
+        int recvSize = 0;
+        PacketInfo info = m_offsetList[0];
+        // バッファから該当するパケットデータを取得
+        int dataSize = size;
+        m_streamBuffer.Position = info.offset;
+        recvSize = m_streamBuffer.Read(buffer, 0, dataSize);
+        // キューデータを取り出したので先頭要素を削除します.
+        for (int i = 0; i < dataPacketsParFile; i++)
+        {
+            if (m_offsetList.Count > 0)
+            {
+                m_offsetList.RemoveAt(0);
+                leadIndex = m_offsetList[0].index;
+            }
+        }
+        leadIndex = m_offsetList[0].index;
+        // すべてのキューデータを取り出したときはストリームをクリアしてメモリを節約します.
+        if (m_offsetList.Count == 0)
+        {
+            Clear();
+            m_offset = 0;
+        }
+
+        return recvSize;
+    }
+
+    // キューをクリア.	
+    public void Clear()
 	{
 		byte[] buffer = m_streamBuffer.GetBuffer();
 		Array.Clear(buffer, 0, buffer.Length);
