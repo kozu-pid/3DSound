@@ -18,10 +18,10 @@ public class TransportUDP : MonoBehaviour {
 	private Socket			m_socket = null;
 
 	// 送信バッファ.
-	// private PacketQueue		m_sendQueue;
+	// private PacketQueue_pre		m_sendQueue;
 	
 	// 受信バッファ.
-	private PacketQueue		m_recvQueue;
+	private PacketQueue_pre		m_recvQueue;
 
 	//
 	// スレッド関連のメンバ変数.
@@ -59,7 +59,7 @@ public class TransportUDP : MonoBehaviour {
 
     public TransportUDP()
     {
-        m_recvQueue = new PacketQueue();
+        m_recvQueue = new PacketQueue_pre();
         m_recvQueue.Clear();
         dataIndex = 0;
         recvIndex = 0;
@@ -67,7 +67,7 @@ public class TransportUDP : MonoBehaviour {
 
     public TransportUDP(int dataPacketsParFile, int bytesParPacket)
     {
-        m_recvQueue = new PacketQueue();
+        m_recvQueue = new PacketQueue_pre();
         dataIndex = 0;
         recvIndex = 0;
         this.dataPacketsParFile = dataPacketsParFile;
