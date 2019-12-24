@@ -1596,7 +1596,12 @@ PrefabInstance:
     - target: {fileID: 9024289885523227031, guid: 9e50d231e77ec45a888b45df23ea69e4,
         type: 3}
       propertyPath: ipAddressText
-      value: 192.168.1.2
+      value: 192.168.3.16
+      objectReference: {fileID: 0}
+    - target: {fileID: 9024289885523227031, guid: 9e50d231e77ec45a888b45df23ea69e4,
+        type: 3}
+      propertyPath: portNum
+      value: 10005
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9e50d231e77ec45a888b45df23ea69e4, type: 3}

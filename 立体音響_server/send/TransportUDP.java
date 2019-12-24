@@ -57,8 +57,8 @@ class TransmitThread extends Thread
 		this.freq = 44100;
 		this.sendUnit = sendUnit;
 		// sleepする時間　送信した分だけsleepしたい
-		// this.sleepSec = 1000 * sendUnit / (this.freq * 4);
-		this.sleepSec = 1;
+		this.sleepSec = 1000 * sendUnit / (this.freq * 4);
+		// this.sleepSec = 1;
 		// 送信単位＋シーケンスヘッダ：4bytes
 		this.mtu = sendUnit + 4;
 	}

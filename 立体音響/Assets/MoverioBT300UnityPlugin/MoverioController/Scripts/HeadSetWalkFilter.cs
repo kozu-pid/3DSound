@@ -79,7 +79,7 @@ public class HeadSetWalkFilter : MonoBehaviour {
 
 			} 
 
-			playerRigidbody.MovePosition(transform.position + head.transform.forward * index * speed + transform.up*0.01f);
+			// playerRigidbody.MovePosition(transform.position + head.transform.forward * index * speed + transform.up*0.01f);
 
 		}
 

@@ -229,6 +229,7 @@ public class TransportUDP : MonoBehaviour
                         // 同じファイルに格納されるデータであれば格納する
                         if (dataIndex / dataPacketsParFile == recvIndex / dataPacketsParFile)
                         {
+                            Debug.Log("Index : " + recvIndex + " is received");
                             try
                             {
                                 Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
@@ -246,6 +247,7 @@ public class TransportUDP : MonoBehaviour
                         if (dataIndex / dataPacketsParFile == recvIndex / dataPacketsParFile)
                         {
                             setZero(dataIndex, recvIndex, bytesParPacket);
+                            // setZero(dataIndex, recvIndex, bytesParPacket);
                             try
                             {
                                 Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
@@ -259,10 +261,12 @@ public class TransportUDP : MonoBehaviour
                         }
                         else
                         {
-                            setZero(dataIndex, dataPacketsParFile, bytesParPacket);
                             dataIndex = dataPacketsParFile;
+                            setZero(dataIndex, recvIndex, bytesParPacket);
+                            // setZero(dataIndex, recvIndex, bytesParPacket);
                             enqueue();
                             setZero(dataIndex, recvIndex, bytesParPacket);
+                            // setZero(dataIndex, recvIndex, bytesParPacket);
                             try
                             {
                                 Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
@@ -300,6 +304,7 @@ public class TransportUDP : MonoBehaviour
 
     private void setZero(int srcIndex, int dstIndex, int unitLength)
     {
+        Debug.Log("setZero is called. secIndex = " + srcIndex + ", dstIndex = " + dstIndex);
         if (srcIndex >= dstIndex)
         {
             return;
@@ -312,6 +317,16 @@ public class TransportUDP : MonoBehaviour
         for (int i = srcIndex; i < dstIndex; i++)
         {
             Array.Copy(zeros, 0, waveBytes, (i % dataPacketsParFile) * bytesParPacket, zeros.Length);
+        }
+    }
+
+    private void setTemp(byte[] buffer, int srcIndex, int dstIndex, int unitLength)
+    {
+        Debug.Log("setTemp is called. secIndex = " + srcIndex + ", dstIndex = " + dstIndex);
+        byte[] tempArray = buffer;
+        for (int i = srcIndex; i < dstIndex; i++)
+        {
+            Array.Copy(tempArray, 4, waveBytes, (i % dataPacketsParFile) * bytesParPacket, unitLength);
         }
     }
 

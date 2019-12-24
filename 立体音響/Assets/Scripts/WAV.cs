@@ -77,11 +77,9 @@ namespace WWUtils.Audio
 
             // Write to double array/s:
             int i = 0;
-            // TODO: ノイズ除去
-            while (pos < wav.Length && i < LeftChannel.Length)
+            while (pos < wav.Length)
             {
                 LeftChannel[i] = bytesToFloat(wav[pos], wav[pos + 1]);
-                // Debug.Log("LeftChannel.Length : " + LeftChannel.Length + ", i : " + i);
                 pos += 2;
                 if (ChannelCount == 2)
                 {
