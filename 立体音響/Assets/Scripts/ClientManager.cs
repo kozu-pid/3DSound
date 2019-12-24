@@ -37,7 +37,8 @@ public class ClientManager : MonoBehaviour
         // 通信関連
         waveDataBytesParPacketLength = 441;
         waveDataPacketParFile = 1000;
-        clientSocket = new TransportUDP(waveDataPacketParFile, waveDataBytesParPacketLength);
+        clientSocket =
+            new TransportUDP(waveDataPacketParFile, waveDataBytesParPacketLength);
         ipAddressText = DataManager.Instance.IpAddressText;
         port = DataManager.Instance.PortNum;
         // 本番コード
@@ -50,12 +51,15 @@ public class ClientManager : MonoBehaviour
         audioClips = new Queue<AudioClip>();
 
         // If clientSocket.ThreadLoop is true, recieveWaveBytes is called
-        var recieveStream = this.UpdateAsObservable().Where(_ => clientSocket.ThreadLoop);
+        var recieveStream =
+            this.UpdateAsObservable().Where(_ => clientSocket.ThreadLoop);
         recieveStream.Subscribe(_ => {
             recieveWaveBytes();
         });
 
-        var stopWaveStream = this.UpdateAsObservable().Where(_ => (!speakerAudio[0].isPlaying || speakerAudio[0].clip == null));
+        var stopWaveStream =
+            this.UpdateAsObservable().Where(_ =>
+                (!speakerAudio[0].isPlaying || speakerAudio[0].clip == null));
         stopWaveStream.Subscribe(_ =>
         {
             playWaveFile();
@@ -72,7 +76,6 @@ public class ClientManager : MonoBehaviour
             return;
         }
         Array.Copy(buffer, 0, waveData, 44, buffer.Length);
-        // Debug.Log("recvWaveData : " + BitConverter.ToString(waveData));
         setAudioClip(createAudioClip(waveData));
     }
 
@@ -80,7 +83,8 @@ public class ClientManager : MonoBehaviour
     {
         WAV wav = new WAV(array);
         Debug.Log(wav);
-        AudioClip audioClip = AudioClip.Create("testSound", wav.SampleCount, 1, wav.Frequency, false);
+        AudioClip audioClip =
+            AudioClip.Create("testSound", wav.SampleCount, 1, wav.Frequency, false);
         audioClip.SetData(wav.LeftChannel, 0);
         return audioClip;
     }

@@ -18,9 +18,6 @@ public class TransportUDP : MonoBehaviour
     // クライアントとの送受信用ソケット.
     private Socket m_socket = null;
 
-    // 送信バッファ.
-    // private PacketQueue_pre		m_sendQueue;
-
     // 受信バッファ.
     private PacketQueue m_recvQueue;
 
@@ -37,10 +34,7 @@ public class TransportUDP : MonoBehaviour
 
     protected Thread m_thread = null;
 
-    // バッファのサイズはMTUの設定によって決まります.(MTU:1回に送信できる最大のデータサイズ)
-    // イーサネットの最大MTUは1500bytesです.
-    // この値はOSや端末などで異なるものですのでバッファのサイズは
-    // 動作させる環境のMTUを調べて設定しましょう.
+    // バッファのサイズはMTUの設定によって決まります.
     private static int s_mtu = 445;
 
     private int dataPacketsParFile;
@@ -87,7 +81,8 @@ public class TransportUDP : MonoBehaviour
         try
         {
             // ソケットを生成します.
-            m_socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            m_socket =
+                new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             // 使用するポート番号を割り当てます.
             m_socket.Bind(new IPEndPoint(IPAddress.Any, port));
         }
@@ -107,7 +102,8 @@ public class TransportUDP : MonoBehaviour
         try
         {
             // ソケットを生成します.
-            m_socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            m_socket =
+                new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPAddress srcIpAddress = IPAddress.Parse(ipAddress);
             // 使用するポート番号を割り当てます.
             m_socket.Bind(new IPEndPoint(srcIpAddress, port));
@@ -196,7 +192,6 @@ public class TransportUDP : MonoBehaviour
             {
                 byte[] buffer = new byte[s_mtu];
                 int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
-                // 通信相手と切断したことにReceive関数の関数値は0が返されます.
                 if (recvSize == 0)
                 {
                     // 切断.
@@ -204,35 +199,44 @@ public class TransportUDP : MonoBehaviour
                 }
                 else if (recvSize > 0)
                 {
-                    // ゲームスレッド側に受信したデータを渡すために受信データをキューに追加します.
+                    // ゲームスレッド側に受信したデータを渡すため，
+                    // 受信データをキューに追加します.
                     // インデックスの切り離し
                     int recvIndex = getRecvIndex(buffer);
                     if (dataIndex == recvIndex)
                     {
                         try
                         {
-                            // Debug.Log("buffer : " + buffer.Length + ", waveBytes.Length : " + waveBytes.Length + ", (recvIndex % dataPacketsParFile) : " + (recvIndex % dataPacketsParFile) * bytesParPacket + ", bytesParPacket : " + bytesParPacket);
-                            Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
+                            Array.Copy(
+                                buffer,
+                                4,
+                                waveBytes,
+                                (recvIndex % dataPacketsParFile) * bytesParPacket,
+                                bytesParPacket
+                            );
                         }
                         catch (Exception e)
                         {
                             Debug.Log(e.Message);
                         }
-                        // Debug.Log("waveData : " + BitConverter.ToString(waveBytes));
-                        // Debug.Log("waveData : " + BitConverter.ToString(buffer));
                         dataIndex = recvIndex + 1;
                         enqueue();
-                        
                     }
                     else if (dataIndex > recvIndex)
                     {
                         // 同じファイルに格納されるデータであれば格納する
-                        if (dataIndex / dataPacketsParFile == recvIndex / dataPacketsParFile)
+                        if (dataIndex / dataPacketsParFile ==
+                            recvIndex / dataPacketsParFile)
                         {
-                            Debug.Log("Index : " + recvIndex + " is received");
                             try
                             {
-                                Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
+                                Array.Copy(
+                                    buffer,
+                                    4,
+                                    waveBytes,
+                                    (recvIndex % dataPacketsParFile) * bytesParPacket,
+                                    bytesParPacket
+                                );
                             }
                             catch (Exception e)
                             {
@@ -244,13 +248,20 @@ public class TransportUDP : MonoBehaviour
                     else if (dataIndex < recvIndex)
                     {
                         // 同じファイルに格納されるデータであれば格納する
-                        if (dataIndex / dataPacketsParFile == recvIndex / dataPacketsParFile)
+                        if (dataIndex / dataPacketsParFile ==
+                            recvIndex / dataPacketsParFile)
                         {
-                            setZero(dataIndex, recvIndex, bytesParPacket);
+                            setTemp(buffer, dataIndex, recvIndex, bytesParPacket);
                             // setZero(dataIndex, recvIndex, bytesParPacket);
                             try
                             {
-                                Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
+                                Array.Copy(
+                                    buffer,
+                                    4,
+                                    waveBytes,
+                                    (recvIndex % dataPacketsParFile) * bytesParPacket,
+                                    bytesParPacket
+                                );
                             }
                             catch (Exception e)
                             {
@@ -262,14 +273,20 @@ public class TransportUDP : MonoBehaviour
                         else
                         {
                             dataIndex = dataPacketsParFile;
-                            setZero(dataIndex, recvIndex, bytesParPacket);
+                            setTemp(buffer, dataIndex, recvIndex, bytesParPacket);
                             // setZero(dataIndex, recvIndex, bytesParPacket);
                             enqueue();
-                            setZero(dataIndex, recvIndex, bytesParPacket);
+                            setTemp(buffer, dataIndex, recvIndex, bytesParPacket);
                             // setZero(dataIndex, recvIndex, bytesParPacket);
                             try
                             {
-                                Array.Copy(buffer, 4, waveBytes, (recvIndex % dataPacketsParFile) * bytesParPacket, bytesParPacket);
+                                Array.Copy(
+                                    buffer,
+                                    4,
+                                    waveBytes,
+                                    (recvIndex % dataPacketsParFile) * bytesParPacket,
+                                    bytesParPacket
+                                );
                             }
                             catch (Exception e)
                             {
@@ -304,7 +321,6 @@ public class TransportUDP : MonoBehaviour
 
     private void setZero(int srcIndex, int dstIndex, int unitLength)
     {
-        Debug.Log("setZero is called. secIndex = " + srcIndex + ", dstIndex = " + dstIndex);
         if (srcIndex >= dstIndex)
         {
             return;
@@ -316,17 +332,28 @@ public class TransportUDP : MonoBehaviour
         }
         for (int i = srcIndex; i < dstIndex; i++)
         {
-            Array.Copy(zeros, 0, waveBytes, (i % dataPacketsParFile) * bytesParPacket, zeros.Length);
+            Array.Copy(
+                zeros,
+                0,
+                waveBytes,
+                (i % dataPacketsParFile) * bytesParPacket,
+                zeros.Length
+            );
         }
     }
 
     private void setTemp(byte[] buffer, int srcIndex, int dstIndex, int unitLength)
     {
-        Debug.Log("setTemp is called. secIndex = " + srcIndex + ", dstIndex = " + dstIndex);
         byte[] tempArray = buffer;
         for (int i = srcIndex; i < dstIndex; i++)
         {
-            Array.Copy(tempArray, 4, waveBytes, (i % dataPacketsParFile) * bytesParPacket, unitLength);
+            Array.Copy(
+                tempArray,
+                4,
+                waveBytes,
+                (i % dataPacketsParFile) * bytesParPacket,
+                unitLength
+            );
         }
     }
 

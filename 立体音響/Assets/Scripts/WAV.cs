@@ -37,7 +37,6 @@ namespace WWUtils.Audio
         public int SampleCount { get; internal set; }
         public int Frequency { get; internal set; }
 
-        // Returns left and right double arrays. 'right' will be null if sound is mono.
         public WAV(string filename) :
             this(GetBytes(filename))
         { }
@@ -46,29 +45,38 @@ namespace WWUtils.Audio
         {
 
             // Determine if mono or stereo
-            ChannelCount = wav[22];     // Forget byte 23 as 99.999% of WAVs are 1 or 2 channels
+            ChannelCount = wav[22];
 
             // Get the frequency
             Frequency = bytesToInt(wav, 24);
             Debug.Log("Frequency : " + Frequency);
 
             // Get past all the other sub chunks to get to the data subchunk:
-            int pos = 12;   // First Subchunk ID from 12 to 16
+            int pos = 12;
 
-            // Keep iterating until we find the data chunk (i.e. 64 61 74 61 ...... (i.e. 100 97 116 97 in decimal))
+            // Keep iterating until we find the data chunk
             // "data"
 
-            while (!(wav[pos] == 100 && wav[pos + 1] == 97 && wav[pos + 2] == 116 && wav[pos + 3] == 97))
+            while (
+                !(wav[pos] == 100 && 
+                wav[pos + 1] == 97 && 
+                wav[pos + 2] == 116 && 
+                wav[pos + 3] == 97)
+            )
             {
                 pos += 4;
-                int fmtSize = wav[pos] + wav[pos + 1] * 256 + wav[pos + 2] * 65536 + wav[pos + 3] * 16777216;
+                int fmtSize = 
+                    wav[pos] + 
+                    wav[pos + 1] * 256 + 
+                    wav[pos + 2] * 65536 + 
+                    wav[pos + 3] * 16777216;
                 pos += 4 + fmtSize;
             }
             pos += 8;
 
             // Pos is now positioned to start of actual sound data.
-            SampleCount = (wav.Length - pos) / 2;     // 2 bytes per sample (16 bit sound mono)
-            if (ChannelCount == 2) SampleCount /= 2;        // 4 bytes per sample (16 bit stereo)
+            SampleCount = (wav.Length - pos) / 2;
+            if (ChannelCount == 2) SampleCount /= 2;
 
             // Allocate memory (right will be null if only mono sound)
             LeftChannel = new float[SampleCount];
@@ -89,11 +97,5 @@ namespace WWUtils.Audio
                 i++;
             }
         }
-
-        public override string ToString()
-        {
-            return string.Format("[WAV: LeftChannel={0}, RightChannel={1}, ChannelCount={2}, SampleCount={3}, Frequency={4}]", LeftChannel, RightChannel, ChannelCount, SampleCount, Frequency);
-        }
     }
-
 }
