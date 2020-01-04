@@ -101,6 +101,7 @@ public class ClientManager : MonoBehaviour
             return;
         }
         AudioClip clip = audioClips.Dequeue();
+        // 再生処理
         for (int i = 0; i < speakerAudio.Length; i++)
         {
             speakerAudio[i].clip = clip;

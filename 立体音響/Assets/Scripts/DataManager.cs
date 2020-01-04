@@ -12,7 +12,7 @@ public class DataManager : SingletonManager<DataManager>
 
     private void Start()
     {
-        ipAddressText = "192.168.1.4";
+        ipAddressText = "10.2.229.133";
         portNum = 10005;
     }
 

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.Video;
 using UniRx;
 using UniRx.Triggers;
 using WWUtils.Audio;
@@ -13,6 +13,7 @@ public class ClientTestManager : MonoBehaviour
 
     // TODO : Array
     [SerializeField] private AudioSource speakerAudio;
+    [SerializeField] private VideoPlayer screen;
 
     #endregion SerializeField Define
 
@@ -81,7 +82,6 @@ public class ClientTestManager : MonoBehaviour
             return;
         }
         Array.Copy(buffer, 0, waveData, 44, buffer.Length);
-        // Debug.Log("recvWaveData : " + BitConverter.ToString(waveData));
         setAudioClip(createAudioClip(waveData));
     }
 
@@ -109,6 +109,10 @@ public class ClientTestManager : MonoBehaviour
         speakerAudio.clip = audioClips.Dequeue();
         Debug.Log("Dequeue is called");
         speakerAudio.Play();
+        if (!screen.isPlaying)
+        {
+            screen.Play();
+        }
     }
 
     private int setWaveHeader(byte[] waveBytes)
