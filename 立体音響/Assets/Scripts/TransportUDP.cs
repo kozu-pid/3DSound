@@ -376,6 +376,7 @@ public class TransportUDP : MonoBehaviour
                                     Debug.Log(e.Message);
                                 }
                                 dataIndex = recvIndex + 1;
+                                enqueue(false);
                             }
                             else
                             {
@@ -385,7 +386,7 @@ public class TransportUDP : MonoBehaviour
                                 setZero(waveBytes, dataIndex, recvIndex, bytesParPacket);
                                 enqueue(true);
                                 // setTemp(buffer, dataIndex, recvIndex, bytesParPacket);
-                                setZero(nextWaveBytes, dataIndex, recvIndex, bytesParPacket);
+                                setZero(waveBytes, dataIndex, recvIndex, bytesParPacket);
                                 try
                                 {
                                     Array.Copy(
@@ -401,6 +402,7 @@ public class TransportUDP : MonoBehaviour
                                     Debug.Log(e.Message);
                                 }
                                 dataIndex = recvIndex + 1;
+                                enqueue(false);
                             }
                         }
                     }
